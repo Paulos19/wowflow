@@ -10,19 +10,19 @@ const SCENES = [
     { folder: "session 4", frames: 79, scrollMultiplier: 3, name: "White Transition" },
 ];
 
-// Precompute cumulative frame offsets for each scene
 const SCENE_OFFSETS = SCENES.reduce<number[]>((acc, s, i) => {
     acc.push(i === 0 ? 0 : acc[i - 1] + SCENES[i - 1].frames);
     return acc;
 }, []);
 
 const TOTAL_FRAMES = SCENES.reduce((a, s) => a + s.frames, 0); // 439
-const TOTAL_SCROLL_MULT = SCENES.reduce((a, s) => a + s.scrollMultiplier, 0); // 20
-const SCROLL_VH = TOTAL_SCROLL_MULT * 100; // 2000vh
+const TOTAL_SCROLL_MULT = SCENES.reduce((a, s) => a + s.scrollMultiplier, 0);
+const SCROLL_VH = TOTAL_SCROLL_MULT * 100;
 
 /* ── Types ─────────────────────────────────────────────────────── */
 interface MasterScrollSceneProps {
     onProgressUpdate?: (progress: number, frame: number, scene: string) => void;
+    onLoadProgress?: (progress: number) => void;
 }
 
 interface SceneState {
@@ -31,24 +31,32 @@ interface SceneState {
     globalProgress: number;
 }
 
-/* ── Helper: draw image with "cover" behaviour ─────────────────── */
-function drawCover(
+/* ── Helper: draw image with "cover" + HD quality ──────────────── */
+function drawCoverHD(
     ctx: CanvasRenderingContext2D,
     canvas: HTMLCanvasElement,
-    img: HTMLImageElement
+    img: HTMLImageElement,
+    alpha: number = 1
 ) {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
 
-    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
+    // Resize canvas to full native resolution
+    const targetW = w * dpr;
+    const targetH = h * dpr;
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
     }
 
+    // Max quality rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+    // Compute "cover" dimensions
     const imgR = img.naturalWidth / img.naturalHeight;
     const canR = w / h;
     let dw: number, dh: number, ox: number, oy: number;
@@ -65,7 +73,13 @@ function drawCover(
         oy = (h - dh) / 2;
     }
 
+    if (alpha < 1) {
+        ctx.globalAlpha = alpha;
+    }
     ctx.drawImage(img, ox, oy, dw, dh);
+    if (alpha < 1) {
+        ctx.globalAlpha = 1;
+    }
 }
 
 /* ── Find which scene a global frame belongs to ────────────────── */
@@ -81,11 +95,11 @@ function getSceneForFrame(globalFrame: number): { index: number; localFrame: num
 }
 
 /* ── Component ─────────────────────────────────────────────────── */
-export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) {
+export function MasterScrollScene({ onProgressUpdate, onLoadProgress }: MasterScrollSceneProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const imagesRef = useRef<HTMLImageElement[]>([]);
-    const lastFrameRef = useRef(-1);
+    const lastExactProgress = useRef(-1);
 
     const [scene, setScene] = useState<SceneState>({
         index: 0,
@@ -106,40 +120,73 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
         return paths;
     }, []);
 
-    /* ── Draw a specific global frame index on the canvas ────────── */
-    const drawFrame = useCallback((frameIndex: number) => {
+    /* ── Draw with frame blending for 15fps → 60fps smoothness ─── */
+    const drawBlended = useCallback((exactProgress: number) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext("2d", { alpha: false });
         if (!ctx) return;
 
-        if (lastFrameRef.current === frameIndex) return;
+        // Avoid redrawing the exact same position
+        if (Math.abs(exactProgress - lastExactProgress.current) < 0.00001) return;
+        lastExactProgress.current = exactProgress;
 
-        const img = imagesRef.current[frameIndex];
-        if (img?.complete && img.naturalWidth > 0) {
-            lastFrameRef.current = frameIndex;
-            drawCover(ctx, canvas, img);
-            return;
-        }
+        const imgs = imagesRef.current;
+        const maxIdx = TOTAL_FRAMES - 1;
 
-        // Fallback: try closest loaded frame
-        for (let off = 1; off < 20; off++) {
-            const fb = imagesRef.current[Math.max(0, frameIndex - off)];
-            if (fb?.complete && fb.naturalWidth > 0) {
-                drawCover(ctx, canvas, fb);
-                return;
+        // Continuous frame position (e.g., 42.7 means 70% between frame 42 and 43)
+        const exactFrame = exactProgress * maxIdx;
+        const frameA = Math.min(maxIdx, Math.max(0, Math.floor(exactFrame)));
+        const frameB = Math.min(maxIdx, frameA + 1);
+        const blend = exactFrame - frameA; // 0–1 interpolation factor
+
+        const imgA = imgs[frameA];
+        const imgB = imgs[frameB];
+
+        const aReady = imgA?.complete && imgA.naturalWidth > 0;
+        const bReady = imgB?.complete && imgB.naturalWidth > 0;
+
+        if (aReady && bReady && frameA !== frameB && blend > 0.01) {
+            // ── Cross-fade blend between two frames ──
+            // Draw frame A at full opacity
+            drawCoverHD(ctx, canvas, imgA, 1);
+            // Draw frame B on top with partial opacity
+            drawCoverHD(ctx, canvas, imgB, blend);
+        } else if (aReady) {
+            drawCoverHD(ctx, canvas, imgA, 1);
+        } else {
+            // Fallback: nearest loaded frame
+            for (let off = 1; off < 30; off++) {
+                const fb = imgs[Math.max(0, frameA - off)];
+                if (fb?.complete && fb.naturalWidth > 0) {
+                    drawCoverHD(ctx, canvas, fb, 1);
+                    return;
+                }
             }
         }
     }, []);
 
-    /* ── Preload all images ──────────────────────────────────────── */
+    /* ── Preload all images with progress reporting ───────────── */
     useEffect(() => {
-        const imgs: HTMLImageElement[] = new Array(framePaths.length);
+        const total = framePaths.length;
+        const imgs: HTMLImageElement[] = new Array(total);
+        let loadedCount = 0;
 
         framePaths.forEach((src, i) => {
             const img = new Image();
+            // Full quality: don't let browser downscale
+            img.decoding = "async";
             img.onload = () => {
-                if (i === 0 && lastFrameRef.current === -1) drawFrame(0);
+                loadedCount++;
+                if (i === 0 && lastExactProgress.current === -1) {
+                    drawBlended(0);
+                }
+                // Report loading progress
+                onLoadProgress?.(loadedCount / total);
+            };
+            img.onerror = () => {
+                loadedCount++;
+                onLoadProgress?.(loadedCount / total);
             };
             img.src = src;
             imgs[i] = img;
@@ -152,9 +199,9 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
                 if (img) img.src = "";
             });
         };
-    }, [framePaths, drawFrame]);
+    }, [framePaths, drawBlended, onLoadProgress]);
 
-    /* ── Scroll handler — DIRECT, no lerp ────────────────────────── */
+    /* ── Scroll handler — with sub-frame precision ───────────────── */
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
@@ -174,15 +221,15 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
             const scrolled = -rect.top;
             const progress = Math.max(0, Math.min(1, scrolled / scrollable));
 
+            // Draw with sub-frame blending (not snapping to integer frame)
+            drawBlended(progress);
+
             const frame = Math.min(
                 TOTAL_FRAMES - 1,
                 Math.max(0, Math.floor(progress * (TOTAL_FRAMES - 1)))
             );
 
-            drawFrame(frame);
-
             const { index: sceneIdx, localProgress: localProg } = getSceneForFrame(frame);
-
             setScene({ index: sceneIdx, localProgress: localProg, globalProgress: progress });
         };
 
@@ -194,7 +241,7 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
         };
 
         const onResize = () => {
-            lastFrameRef.current = -1;
+            lastExactProgress.current = -1;
             update();
         };
 
@@ -207,7 +254,7 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
             window.removeEventListener("scroll", onScroll);
             window.removeEventListener("resize", onResize);
         };
-    }, [drawFrame]);
+    }, [drawBlended]);
 
     /* ── Report to parent ────────────────────────────────────────── */
     useEffect(() => {
@@ -222,7 +269,6 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
 
     return (
         <>
-            {/* Scroll spacer */}
             <div
                 ref={containerRef}
                 style={{
@@ -231,7 +277,6 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
                 }}
             />
 
-            {/* Fixed canvas layer */}
             {isVisible && (
                 <div
                     style={{
@@ -247,10 +292,14 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
                 >
                     <canvas
                         ref={canvasRef}
-                        style={{ display: "block", width: "100%", height: "100%" }}
+                        style={{
+                            display: "block",
+                            width: "100%",
+                            height: "100%",
+                            imageRendering: "auto",
+                        }}
                     />
 
-                    {/* Dynamic overlays per scene */}
                     {si === 0 && <HeroOverlay progress={lp} />}
                     {si === 1 && <CityOverlay progress={lp} />}
                     {si === 2 && <ImpactOverlay progress={lp} />}
@@ -427,18 +476,12 @@ function ImpactOverlay({ progress }: { progress: number }) {
     );
 }
 
-/* ── WhiteOverlay: Transition from white frames → dark ContentSection ─ */
 function WhiteOverlay({ progress }: { progress: number }) {
-    // Session 4 frames go from bright impact (frame 1) to nearly white (frame ~50-79)
-    // progress 0.0 → 0.6: frames still transitioning, let the white frames show naturally
-    // progress 0.6 → 0.85: overlay fades white to full opaque  
-    // progress 0.85 → 1.0: cross-fade from white → dark (zinc-950) for seamless ContentSection entry
     const whiteFade = progress > 0.5 ? Math.min(1, (progress - 0.5) * 2.5) : 0;
     const darkFade = progress > 0.8 ? Math.min(1, (progress - 0.8) * 5) : 0;
 
     return (
         <div className="absolute inset-0 z-10 pointer-events-none">
-            {/* White overlay */}
             <div
                 className="absolute inset-0"
                 style={{
@@ -446,12 +489,10 @@ function WhiteOverlay({ progress }: { progress: number }) {
                     opacity: whiteFade * (1 - darkFade),
                 }}
             />
-
-            {/* Dark crossfade: white → zinc-950 */}
             <div
                 className="absolute inset-0"
                 style={{
-                    background: "#09090b", // zinc-950
+                    background: "#09090b",
                     opacity: darkFade,
                 }}
             />
