@@ -45,7 +45,7 @@ const services = [
 
 export function ContentSection() {
     return (
-        <section className="relative bg-zinc-950 overflow-hidden">
+        <section className="relative bg-zinc-950 overflow-x-clip">
 
             {/* ── TOP GRADIENT: seamless entry from WhiteOverlay → dark ── */}
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-[#09090b] to-transparent z-10 pointer-events-none" />
@@ -128,16 +128,23 @@ export function ContentSection() {
                 {/* ─── RIGHT: Spline 3D Scene ─────────────────────────── */}
                 <div className="relative w-full lg:w-[45%] min-h-[500px] lg:min-h-screen order-first lg:order-last">
 
-                    {/* Blending gradients */}
-                    <div className="absolute inset-0 z-10 pointer-events-none lg:bg-gradient-to-r lg:from-zinc-950/80 lg:via-transparent lg:to-transparent" />
-                    <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-b from-zinc-950/60 via-transparent to-zinc-950/60 lg:from-zinc-950/30 lg:via-transparent lg:to-zinc-950/30" />
+                    {/* Blending gradient: soft fade from left text area */}
+                    <div className="absolute inset-0 z-10 pointer-events-none lg:bg-gradient-to-r lg:from-zinc-950 lg:via-zinc-950/20 lg:to-transparent" style={{ width: '30%' }} />
 
-                    {/* Spline 3D container */}
-                    <div className="absolute inset-0" style={{ pointerEvents: 'auto' }}>
-                        <SplineScene
-                            scene={SPLINE_URL}
-                            className="w-full h-full"
-                        />
+                    {/* Spline 3D container — centered with room to breathe */}
+                    <div
+                        className="absolute inset-0 flex items-center justify-center"
+                        style={{
+                            pointerEvents: 'auto',
+                            padding: '8% 5%',
+                        }}
+                    >
+                        <div className="relative w-full h-full" style={{ maxWidth: '600px', maxHeight: '600px' }}>
+                            <SplineScene
+                                scene={SPLINE_URL}
+                                className="w-full h-full"
+                            />
+                        </div>
                     </div>
 
                     {/* Ambient glow behind model */}
