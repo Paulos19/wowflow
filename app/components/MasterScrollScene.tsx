@@ -4,14 +4,21 @@ import { useRef, useEffect, useMemo, useState, useCallback } from "react";
 
 /* ── Scene definitions ─────────────────────────────────────────── */
 const SCENES = [
-    { folder: "session 1", frames: 120, name: "Hero — Crowd to Eye" },
-    { folder: "session 2", frames: 120, name: "Cyberpunk City" },
-    { folder: "session 3", frames: 120, name: "Impact — Car Rush" },
-    { folder: "session 4", frames: 120, name: "White Transition" },
+    { folder: "session 1", frames: 120, scrollMultiplier: 6, name: "Hero — Crowd to Eye" },
+    { folder: "session 2", frames: 120, scrollMultiplier: 6, name: "Cyberpunk City" },
+    { folder: "session 3", frames: 120, scrollMultiplier: 5, name: "Impact — Car Rush" },
+    { folder: "session 4", frames: 79, scrollMultiplier: 3, name: "White Transition" },
 ];
 
-const TOTAL_FRAMES = SCENES.reduce((a, s) => a + s.frames, 0); // 480
-const SCROLL_VH = 2100;
+// Precompute cumulative frame offsets for each scene
+const SCENE_OFFSETS = SCENES.reduce<number[]>((acc, s, i) => {
+    acc.push(i === 0 ? 0 : acc[i - 1] + SCENES[i - 1].frames);
+    return acc;
+}, []);
+
+const TOTAL_FRAMES = SCENES.reduce((a, s) => a + s.frames, 0); // 439
+const TOTAL_SCROLL_MULT = SCENES.reduce((a, s) => a + s.scrollMultiplier, 0); // 20
+const SCROLL_VH = TOTAL_SCROLL_MULT * 100; // 2000vh
 
 /* ── Types ─────────────────────────────────────────────────────── */
 interface MasterScrollSceneProps {
@@ -61,6 +68,18 @@ function drawCover(
     ctx.drawImage(img, ox, oy, dw, dh);
 }
 
+/* ── Find which scene a global frame belongs to ────────────────── */
+function getSceneForFrame(globalFrame: number): { index: number; localFrame: number; localProgress: number } {
+    for (let i = SCENES.length - 1; i >= 0; i--) {
+        if (globalFrame >= SCENE_OFFSETS[i]) {
+            const localFrame = globalFrame - SCENE_OFFSETS[i];
+            const localProgress = Math.min(1, localFrame / Math.max(1, SCENES[i].frames - 1));
+            return { index: i, localFrame, localProgress };
+        }
+    }
+    return { index: 0, localFrame: 0, localProgress: 0 };
+}
+
 /* ── Component ─────────────────────────────────────────────────── */
 export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -74,7 +93,6 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
         globalProgress: 0,
     });
 
-    // Is the scroll container in viewport?
     const [isVisible, setIsVisible] = useState(false);
 
     /* ── Build all frame paths ───────────────────────────────────── */
@@ -150,7 +168,6 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
             const scrollable = container.offsetHeight - wh;
             if (scrollable <= 0) return;
 
-            // Is the container in the viewport?
             const visible = rect.top < wh && rect.bottom > 0;
             setIsVisible(visible);
 
@@ -164,9 +181,7 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
 
             drawFrame(frame);
 
-            const sceneIdx = Math.min(SCENES.length - 1, Math.floor(frame / 120));
-            const localFrame = frame - sceneIdx * 120;
-            const localProg = Math.min(1, localFrame / 119);
+            const { index: sceneIdx, localProgress: localProg } = getSceneForFrame(frame);
 
             setScene({ index: sceneIdx, localProgress: localProg, globalProgress: progress });
         };
@@ -186,7 +201,6 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
         window.addEventListener("scroll", onScroll, { passive: true });
         window.addEventListener("resize", onResize);
 
-        // Double-RAF to ensure layout is settled
         requestAnimationFrame(() => requestAnimationFrame(update));
 
         return () => {
@@ -208,7 +222,7 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
 
     return (
         <>
-            {/* Scroll spacer: this div occupies the scroll range */}
+            {/* Scroll spacer */}
             <div
                 ref={containerRef}
                 style={{
@@ -217,7 +231,7 @@ export function MasterScrollScene({ onProgressUpdate }: MasterScrollSceneProps) 
                 }}
             />
 
-            {/* Fixed canvas layer: always pinned to viewport when visible */}
+            {/* Fixed canvas layer */}
             {isVisible && (
                 <div
                     style={{
@@ -413,20 +427,32 @@ function ImpactOverlay({ progress }: { progress: number }) {
     );
 }
 
+/* ── WhiteOverlay: Transition from white frames → dark ContentSection ─ */
 function WhiteOverlay({ progress }: { progress: number }) {
+    // Session 4 frames go from bright impact (frame 1) to nearly white (frame ~50-79)
+    // progress 0.0 → 0.6: frames still transitioning, let the white frames show naturally
+    // progress 0.6 → 0.85: overlay fades white to full opaque  
+    // progress 0.85 → 1.0: cross-fade from white → dark (zinc-950) for seamless ContentSection entry
+    const whiteFade = progress > 0.5 ? Math.min(1, (progress - 0.5) * 2.5) : 0;
+    const darkFade = progress > 0.8 ? Math.min(1, (progress - 0.8) * 5) : 0;
+
     return (
         <div className="absolute inset-0 z-10 pointer-events-none">
+            {/* White overlay */}
             <div
-                className="absolute inset-0 bg-white"
+                className="absolute inset-0"
                 style={{
-                    opacity: progress > 0.3 ? Math.min(1, (progress - 0.3) * 1.5) : 0,
+                    background: "white",
+                    opacity: whiteFade * (1 - darkFade),
                 }}
             />
+
+            {/* Dark crossfade: white → zinc-950 */}
             <div
-                className="absolute bottom-0 left-0 right-0 h-1/3"
+                className="absolute inset-0"
                 style={{
-                    background: "linear-gradient(to top, white, transparent)",
-                    opacity: progress > 0.5 ? Math.min(1, (progress - 0.5) * 2) : 0,
+                    background: "#09090b", // zinc-950
+                    opacity: darkFade,
                 }}
             />
         </div>

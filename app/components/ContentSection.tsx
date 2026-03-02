@@ -1,95 +1,149 @@
 "use client";
 
+import { SplineScene } from "./SplineScene";
+
+const SPLINE_URL = "https://prod.spline.design/QtVEkK6ggU7j75gL/scene.splinecode";
+
 const services = [
     {
         icon: "⚡",
-        title: "Automações Inteligentes",
+        label: "AUTOMAÇÃO",
+        title: "Fluxos que trabalham por você",
         description:
-            "Fluxos automatizados que conectam seus sistemas, eliminam tarefas repetitivas e aceleram seus processos em até 10x.",
+            "Conectamos seus sistemas e eliminamos tarefas repetitivas. Mais eficiência, menos esforço manual. Resultados em tempo real.",
+        gradient: "from-amber-500 to-orange-600",
+        glow: "group-hover:shadow-amber-500/20",
     },
     {
         icon: "📊",
-        title: "Dashboards Criativos",
+        label: "DASHBOARDS",
+        title: "Dados que contam histórias",
         description:
-            "Painéis visuais que transformam dados complexos em insights claros e acionáveis, com design que impressiona.",
+            "Painéis visuais que transformam números complexos em insights claros e acionáveis. Design que impressiona, dados que decidem.",
+        gradient: "from-indigo-500 to-violet-600",
+        glow: "group-hover:shadow-indigo-500/20",
     },
     {
         icon: "🔗",
-        title: "Integração de Dados",
+        label: "INTEGRAÇÃO",
+        title: "Um ecossistema unificado",
         description:
-            "Conectamos todas as suas fontes de dados em um ecossistema unificado, fluido e em tempo real.",
+            "Todas as suas fontes de dados conectadas em um fluxo contínuo. Sem silos, sem barreiras. Informação livre e em tempo real.",
+        gradient: "from-emerald-500 to-teal-600",
+        glow: "group-hover:shadow-emerald-500/20",
     },
     {
         icon: "🚀",
-        title: "Performance em Escala",
+        label: "PERFORMANCE",
+        title: "Escala sem compromisso",
         description:
-            "Infraestrutura robusta que cresce com você, mantendo velocidade e confiabilidade em qualquer volume.",
+            "Infraestrutura que cresce com você. Velocidade e confiabilidade mantidas em qualquer volume de operação.",
+        gradient: "from-rose-500 to-pink-600",
+        glow: "group-hover:shadow-rose-500/20",
     },
 ];
 
 export function ContentSection() {
     return (
-        <section className="relative bg-white min-h-screen">
-            <div className="max-w-6xl mx-auto px-6 md:px-12 py-24 md:py-32">
-                {/* Section header */}
-                <div className="text-center mb-20 animate-fade-in-up">
-                    <h2 className="text-4xl md:text-6xl lg:text-7xl font-black text-zinc-900 tracking-tight">
-                        O futuro é <span className="text-indigo-600">agora</span>
-                    </h2>
-                    <p className="text-zinc-500 text-lg md:text-xl mt-6 max-w-2xl mx-auto font-light leading-relaxed">
-                        A wowflow é uma agência de automações e dashboards criativos, pronta para revolucionar a forma como você trabalha com dados.
-                    </p>
-                </div>
+        <section className="relative bg-zinc-950 overflow-hidden">
 
-                {/* Service cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                    {services.map((service, index) => (
-                        <div
-                            key={service.title}
-                            className="group relative bg-zinc-50 border border-zinc-100 rounded-2xl p-8 md:p-10 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-100 transition-all duration-500 animate-fade-in-up"
-                            style={{ animationDelay: `${index * 150}ms`, animationFillMode: "both" }}
-                        >
-                            <span className="text-3xl mb-4 block">{service.icon}</span>
-                            <h3 className="text-xl md:text-2xl font-bold text-zinc-900 mb-3">
-                                {service.title}
-                            </h3>
-                            <p className="text-zinc-500 leading-relaxed font-light">
-                                {service.description}
-                            </p>
-                            <div className="absolute bottom-0 left-8 right-8 h-[2px] bg-gradient-to-r from-indigo-500 to-violet-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-full" />
+            {/* ── TOP GRADIENT: seamless entry from WhiteOverlay → dark ── */}
+            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-[#09090b] to-transparent z-10 pointer-events-none" />
+
+            {/* ── Ambient glows ──────────────────────────────────────── */}
+            <div className="absolute top-1/4 left-0 w-[600px] h-[600px] bg-indigo-600/5 rounded-full blur-[150px] pointer-events-none" />
+            <div className="absolute bottom-1/4 right-0 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none" />
+
+            {/* ── MAIN LAYOUT: Cards + 3D Side-by-Side ──────────────── */}
+            <div className="relative flex flex-col lg:flex-row min-h-screen">
+
+                {/* ─── LEFT: Text Content & Cards ─────────────────────── */}
+                <div className="relative z-20 w-full lg:w-[55%] px-6 md:px-12 lg:px-16 xl:px-20 py-24 md:py-32 flex flex-col justify-center">
+
+                    {/* Section header */}
+                    <div className="mb-16">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/5 mb-6">
+                            <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+                            <span className="text-indigo-300 text-xs font-medium uppercase tracking-[0.2em]">
+                                O que fazemos
+                            </span>
                         </div>
-                    ))}
+
+                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.05]">
+                            Transformamos{" "}
+                            <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-purple-400 bg-clip-text text-transparent">
+                                complexidade
+                            </span>
+                            <br />
+                            em clareza.
+                        </h2>
+                        <p className="text-zinc-400 text-lg md:text-xl mt-6 max-w-xl font-light leading-relaxed">
+                            Automações e dashboards que transformam caos em insights, processos em fluxos, e dados em decisões.
+                        </p>
+                    </div>
+
+                    {/* Service cards — 2x2 grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
+                        {services.map((service) => (
+                            <div
+                                key={service.title}
+                                className={`group relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 transition-all duration-500 hover:bg-zinc-900/80 hover:border-zinc-700/60 hover:scale-[1.02] hover:shadow-2xl ${service.glow} cursor-default`}
+                            >
+                                {/* Top accent bar */}
+                                <div className={`absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r ${service.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-full`} />
+
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <span className="text-2xl">{service.icon}</span>
+                                        <span className={`text-[10px] font-bold tracking-[0.3em] bg-gradient-to-r ${service.gradient} bg-clip-text text-transparent`}>
+                                            {service.label}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-base font-bold text-white mb-2 tracking-tight leading-snug">
+                                        {service.title}
+                                    </h3>
+                                    <p className="text-zinc-500 text-sm leading-relaxed font-light">
+                                        {service.description}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* CTA */}
+                    <div className="mt-14 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+                        <a
+                            href="#"
+                            className="group/btn inline-flex items-center gap-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-8 py-4 rounded-full text-base font-semibold transition-all duration-300 hover:shadow-[0_8px_40px_rgba(99,102,241,0.35)] hover:scale-105"
+                        >
+                            Comece sua revolução
+                            <span className="text-lg transition-transform duration-300 group-hover/btn:translate-x-1">→</span>
+                        </a>
+                        <span className="text-zinc-600 text-sm font-light">
+                            Fale com a gente. Sem compromisso.
+                        </span>
+                    </div>
                 </div>
 
-                {/* CTA */}
-                <div className="text-center mt-20 animate-fade-in-up" style={{ animationDelay: "600ms", animationFillMode: "both" }}>
-                    <a
-                        href="#"
-                        className="inline-flex items-center gap-3 bg-zinc-900 hover:bg-zinc-800 text-white px-10 py-4 rounded-full text-lg font-medium transition-all duration-300 hover:shadow-2xl hover:shadow-zinc-900/30 hover:scale-105"
-                    >
-                        Comece sua revolução
-                        <span className="text-xl">→</span>
-                    </a>
-                    <p className="text-zinc-400 text-sm mt-4 font-light">
-                        Fale com a gente. Sem compromisso.
-                    </p>
+                {/* ─── RIGHT: Spline 3D Scene ─────────────────────────── */}
+                <div className="relative w-full lg:w-[45%] min-h-[500px] lg:min-h-screen order-first lg:order-last">
+
+                    {/* Blending gradients */}
+                    <div className="absolute inset-0 z-10 pointer-events-none lg:bg-gradient-to-r lg:from-zinc-950/80 lg:via-transparent lg:to-transparent" />
+                    <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-b from-zinc-950/60 via-transparent to-zinc-950/60 lg:from-zinc-950/30 lg:via-transparent lg:to-zinc-950/30" />
+
+                    {/* Spline 3D container */}
+                    <div className="absolute inset-0" style={{ pointerEvents: 'auto' }}>
+                        <SplineScene
+                            scene={SPLINE_URL}
+                            className="w-full h-full"
+                        />
+                    </div>
+
+                    {/* Ambient glow behind model */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-indigo-600/8 rounded-full blur-[100px] pointer-events-none" />
                 </div>
             </div>
-            <style jsx>{`
-                @keyframes fadeInUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(30px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-                .animate-fade-in-up {
-                    animation: fadeInUp 0.8s ease-out forwards;
-                }
-            `}</style>
         </section>
     );
 }
